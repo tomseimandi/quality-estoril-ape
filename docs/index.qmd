@@ -65,17 +65,15 @@ This paper shows how MLOps principles are applied on a specific ML system at the
 
 ## Context
 
-The French company registry, SIRENE, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. The use of NAF codes is ubiquitous in 
+The French company registry, SIRENE 4, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE 4 leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. NAF activity codes are constantly used by Insee and others to produce business statistics, whenever it comes to studying companies by business sector. It is therefore paramount to ensure that the NAF codes assigned within SIRENE 4 reflect the truth. For this purpose, part of the activity descriptions are manually coded - that is as soon as the model is not confident enough in its prediction. This will be detailed in @sec-serving.
 
-The model currently used in a production setting has been almost entirely trained with historical data from the former SIRENE 3 registry
+The model currently used in a production setting (detailed in @sec-modeling) has been almost entirely trained with historical data from the former SIRENE 3 registry. Approximately 10 million observations covering the period 2014-2022 were gathered for the training procedure. When evaluated on SIRENE 3 data, the model naturally exhibited a very high accuracy of 89% (along with other high performance metrics). However, SIRENE 4 data significantly differs from SIRENE 3 data, as the registration channel has been refactored in the new system. This distribution shift in the data came with a reduced accuracy of 80% on a small SIRENE 4 evaluation set which had been completely hand-coded.
 
-Manual coding
+company activities evolve, new activities appearing, performance should be tracked
 
-company activities evolve, new activities appearing
+## Modeling {#sec-modeling}
 
-## Modeling
-
-## Model serving
+## Model serving {#sec-serving}
 
 # Monitoring
 
