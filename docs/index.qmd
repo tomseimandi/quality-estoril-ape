@@ -1,0 +1,96 @@
+---
+title: "Retraining strategies for an economic activity codification model"
+author:
+  - name: Thomas Faria
+    email: thomas.faria@insee.fr
+    affiliations:
+      - ref: insee
+affiliations:
+  - id: insee
+    name: Insee
+    address: 88 avenue Verdier
+    city: Montrouge
+    postal-code: 92120
+    country: France
+bibliography: bibliography.bib
+format:
+  pdf:
+    template-partials: 
+      - _extensions/partials/title.tex
+    include-in-header:
+      text: |
+        \usepackage[noblocks]{authblk}
+        \renewcommand*{\Authsep}{, }
+        \renewcommand*{\Authand}{, }
+        \renewcommand*{\Authands}{, }
+        \renewcommand\Affilfont{\small}
+    documentclass: article
+    toc: false
+    number-sections: true
+    link-citations: true
+    colorlinks: true
+    geometry:
+        - top=30mm
+        - left=20mm
+        - heightrounded
+abstract: |
+  The French company registry, SIRENE, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE leverages a simple text classification model to code each description into an industry from the French classification of activities (NAF).
+
+  Using a machine learning model in a production environment comes with challenges, in particular regarding model monitoring and maintenance. In this talk, we will first present the monitoring system developed to track model behavior and detect potential drifts for SIRENE. Then we will address the question of model retraining, including the following considerations :
+
+  - Evaluation data: how should evaluation data be collected (data quTraining data: what training data should be used for retraining ? For example, should historical data be used systematically or does the model perform better when only trained on recent data ? To what extent should data classified automaticaantity, frequency, sampling strategy) ?
+  - lly by the model in production be part of the training set to keep it balanced ?
+  - Retraining strategy: at what frequency ? What are the differences between fine-tuning and retraining from scratch ?
+  - Algorithmic adaptations: does a more complex text classification model allow performance gains on new real-world data ?
+
+  This talk aims to equip practitioners with an improved understanding of the technical and practical considerations involved in retraining text classification models. As such models are becoming an essential component of official statistics, it is crucial to ensure the quality of their outputs in production environments.
+keywords:
+  - MLOps
+  - Retraining
+---
+
+# Introduction
+
+Machine learning (ML) systems are increasingly used within national statistical institutes (NSIs) for the production of official statistics. Such systems are already in place today in several NSIs (CITATION PAPER WIESBADEN) for coding and classification of text descriptions, data editing and imputation for example. In addition to this, experiments are conducted on other natural language processing tasks, and even on computer vision systems which are very promising.
+
+The European Statistical System has developed of common quality framework which heavily relies on the European Statistics Code of Practice (CoP). This code of practice was first adopted in 2005 and later revised in 2017. It sets standards for developing, producing and disseminating statistics, in particular by defining quality principles regarding statistical processes and output. For example, the CoP affirms that "sound methodology [and] appropriate statistical procedures, implemented throughout the statistical processes, underpin quality statistics" (principles 7 and 8). Furthermore, it states that "European Statistics [must] accurately and reliably portray reality" (principle 12). To do so, "source data, integrated data, intermediate results and statistical outputs [must be] regularly assessed and validated" and "revisions [must be] regularly analysed in order to improve source data, statistical processes and outputs".
+
+If the ESS common quality framework has conducted European NSIs to implement quality procedures for a large part of their statistical production, there is not a lot of shared experience on what such procedures should look like for statistical outputs leveraging ML systems at some point. MLOps is a set of good practices which aims to deploy and maintain ML systems in production reliably and efficiently.
+
+MLOps is derived from the concept of DevOps, a general software development framework the idea of which is to integrate the entire lifecycle of a project into an automated continuum. This continuity is achieved with the help of CI/CD pipelines. Continuous integration (CI) is the process of integrating code changes into a common source repository in a regular fashion. Continuous deployment (CD) is the process of automatically distributing the changes made to the source code. Consequently, the MLOps principles strive to automate the lifecycle of ML systems. Building a ML system begins with an experimental phase, where a data scientist prepares and analyses data before training a model to solve the task at hand. This model is then served to end-users through an application (typically an API). This application should be continuously monitored so as to detect potential performance losses over time. Major performance losses should trigger some form of model retraining, going back to the data preparation and analysis of the experimental phase (FIGURE).
+
+This paper shows how MLOps principles are applied on a specific ML system at the French NSI (Insee) - namely a codification engine for the economic activity of companies - to ensure quality standards for downstream official statistics.
+
+# Codification system
+
+## Context
+
+The French company registry, SIRENE, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. The use of NAF codes is ubiquitous in 
+
+The model currently used in a production setting has been almost entirely trained with historical data from the former SIRENE 3 registry
+
+Manual coding
+
+company activities evolve, new activities appearing
+
+## Modeling
+
+## Model serving
+
+# Monitoring
+
+## Design
+
+## Engine monitoring
+
+## Continuous performance evaluation
+
+# Retraining
+
+## Triggers
+
+## Retraining strategies
+
+# Discussion
+
+# References
