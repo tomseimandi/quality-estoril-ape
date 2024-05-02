@@ -59,23 +59,35 @@ If the ESS common quality framework has conducted European NSIs to implement qua
 
 MLOps is derived from the concept of DevOps, a general software development framework the idea of which is to integrate the entire lifecycle of a project into an automated continuum. This continuity is achieved with the help of CI/CD pipelines. Continuous integration (CI) is the process of integrating code changes into a common source repository in a regular fashion. Continuous deployment (CD) is the process of automatically distributing the changes made to the source code. Consequently, the MLOps principles strive to automate the lifecycle of ML systems. Building a ML system begins with an experimental phase, where a data scientist prepares and analyses data before training a model to solve the task at hand. This model is then served to end-users through an application (typically an API). This application should be continuously monitored so as to detect potential performance losses over time. Major performance losses should trigger some form of model retraining, going back to the data preparation and analysis of the experimental phase (FIGURE).
 
-This paper shows how MLOps principles are applied on a specific ML system at the French NSI (Insee) - namely a codification engine for the economic activity of companies - to ensure quality standards for downstream official statistics.
+This paper shows how MLOps principles are applied on a specific ML system at the French NSI (Insee) -- namely a codification engine for the economic activity of companies -- to ensure quality standards for downstream official statistics.
 
 # Codification system
 
 ## Context
 
-The French company registry, SIRENE 4, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE 4 leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. NAF activity codes are constantly used by Insee and others to produce business statistics, whenever it comes to studying companies by business sector. It is therefore paramount to ensure that the NAF codes assigned within SIRENE 4 reflect the truth. For this purpose, part of the activity descriptions are manually coded - that is as soon as the model is not confident enough in its prediction. This will be detailed in @sec-serving.
+The French company registry, SIRENE 4, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE 4 leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. NAF activity codes are constantly used by Insee and others to produce business statistics, whenever it comes to studying companies by business sector. It is therefore paramount to ensure that the NAF codes assigned within SIRENE 4 reflect the truth. For this purpose, part of the activity descriptions are manually coded -- that is as soon as the model is not confident enough in its prediction. This will be detailed in @sec-serving.
 
-The model currently used in a production setting (detailed in @sec-modeling) has been almost entirely trained with historical data from the former SIRENE 3 registry. Approximately 10 million observations covering the period 2014-2022 were gathered for the training procedure. When evaluated on SIRENE 3 data, the model naturally exhibited a very high accuracy of 89% (along with other high performance metrics). However, SIRENE 4 data significantly differs from SIRENE 3 data, as the registration channel has been refactored in the new system. This distribution shift in the data came with a reduced accuracy of 80% on a small SIRENE 4 evaluation set which had been completely hand-coded.
+The model currently used in a production setting (detailed in @sec-modeling) has been almost entirely trained with historical data from the former SIRENE 3 registry. Approximately 10 million observations covering the period 2014-2022 were gathered for the training procedure, with part of the ground-truth labels coming from the former rule-based codification engine Sicore, and other from manual annotation (when Sicore could not perform the codification). When evaluated on SIRENE 3 data, the model naturally exhibits a very high accuracy of 89% (along with other high performance metrics). However, SIRENE 4 data significantly differs from SIRENE 3 data (text activity descriptions are for instance longer on average), as the registration channel has been refactored in the new system. This distribution shift in the data comes with a reduced accuracy of 80% on a small evaluation set originating from the new registration channel, which has been completely hand-coded. It is important to note that this first SIRENE 4 evaluation set is biased as only certain types of companies registered through the new channel at first.
 
-company activities evolve, new activities appearing, performance should be tracked
+Company activities evolve over time: completely new businesses appear, businesses traditionally associated with a certain activity may see this activity evolve, etc. As a result, the accuracy of a codification engine leveraging a static model trained on a fixed training set will decrease over time. Indeed, the model would in principle not be able to correctly classify text descriptions totally unlike any description in the training set, or would tend to classify businesses associated with a changing activity according to the code mostly found in the training set.
+
+Therefore, to maintain a highly accurate coding engine, the ML model used must be periodically retrained with an updated train set. Monitoring the activity of the coding engine will help decide when to retrain the ML model, as dicussed in @sec-monitoring. Different retraining methods are discussed in @sec-retraining.
 
 ## Modeling {#sec-modeling}
 
+The text classification model leveraged by the SIRENE codification engine is based on a simple bag-of-ngrams model (REFERENCE), along with a standard multinomial classification head. It is implemented by the fastText library. It is an extension of the bag-of-words approach which represents a text as the average of the vector representations of each of its constituent words. In the bag-of-ngrams extension, embeddings are not only computed on words but also on word n-grams and character n-grams, providing a form of context and reducing biases due to spelling mistakes.    
+
+In our context of supervised text classification, the embedding matrix and the classifier parameters are learned simultaneously during training by gradient descent, minimizing a cross-entropy loss function.
+
+Additional categorical variables are in fact used to classify the text description into NAF codes. As the fastText implementation of the bag-of-ngrams model is currently used in production, a hack is used which consists in concatenating specific strings for the relevant modalities of each of the categorical variables to the text description.
+
 ## Model serving {#sec-serving}
 
-# Monitoring
+Providing the trained model as an artifact is not a convenient way to make it available to end-users, as it assumes that they have the required knowledge to use the artifact to get predictions correctly, which often requires specific computation environment, etc. Serving a model this way always leads to code duplication and very often to errors. In an effort to build an interoperable and easy-to-use codification engine, available for query from various programming languages, our text classification model is served through a REST API. REST APIs have become a standard way to serve ML models. Among theirs advantages, they rely on standards technologies for queries (HTTP requests) and responses (generally, JSON-formatted strings), making them agnostic to the programming language used to query them, and they offer great scalability because of their stateless design.
+
+The REST API is developed using FastAPI, a modern, high-performance, web framework for building APIs with Python. We encapsulate the API code and its dependencies into a Docker image, which is deployed as a container on the Kubernetes cluster. This grants the ability to easily scale the API according to demand thanks to automatic load-balancing. Uponstartup, the API automatically retrieves the text classification model from storage. The model is packaged as an MLflow model, which integrates pre-processing steps in its inference method. This means that clients do not have to apply these steps themselves, which prevents many potential mistakes.  
+
+# Monitoring {#sec-monitoring}
 
 ## Design
 
@@ -83,7 +95,7 @@ company activities evolve, new activities appearing, performance should be track
 
 ## Continuous performance evaluation
 
-# Retraining
+# Retraining {#sec-retraining}
 
 ## Triggers
 
