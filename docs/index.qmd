@@ -20,10 +20,13 @@ format:
     include-in-header:
       text: |
         \usepackage[noblocks]{authblk}
+        \usepackage{lscape}
         \renewcommand*{\Authsep}{, }
         \renewcommand*{\Authand}{, }
         \renewcommand*{\Authands}{, }
         \renewcommand\Affilfont{\small}
+        \newcommand{\blandscape}{\begin{landscape}}
+        \newcommand{\elandscape}{\end{landscape}}
     documentclass: article
     toc: false
     number-sections: true
@@ -63,9 +66,11 @@ This paper shows how MLOps principles are applied on a specific ML system at the
 
 # Codification system
 
-## Context
+## Context {#sec-context}
 
-The French company registry, SIRENE 4, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE 4 leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes. NAF activity codes are constantly used by Insee and others to produce business statistics, whenever it comes to studying companies by business sector. It is therefore paramount to ensure that the NAF codes assigned within SIRENE 4 reflect the truth. For this purpose, part of the activity descriptions are manually coded -- that is as soon as the model is not confident enough in its prediction. This will be detailed in @sec-serving.
+The French company registry, SIRENE 4, lists all companies in France and assigns them a unique identifier, the Siren number, for use by public institutions. As part of the registration process, companies must provide a description of their economic activity. Since the end of 2022, SIRENE 4 leverages a simple model to classify each text description into an industry from the French classification of activities (NAF), which contains 732 different codes[^1]. NAF activity codes are constantly used by Insee and others to produce business statistics, whenever it comes to studying companies by business sector. It is therefore paramount to ensure that the NAF codes assigned within SIRENE 4 reflect the truth. For this purpose, part of the activity descriptions are manually coded -- that is as soon as the model is not confident enough in its prediction. This will be detailed in @sec-serving.
+
+[^1]: The classification has a hierarchical structure, meaning that the 732 codes at the finest level are grouped in 615 *classes*, grouped into 272 *groups*, themselves grouped into 52 *divisions*, themselves finally grouped into 21 *sections*. 
 
 The model currently used in a production setting (detailed in @sec-modeling) has been almost entirely trained with historical data from the former SIRENE 3 registry. Approximately 10 million observations covering the period 2014-2022 were gathered for the training procedure, with part of the ground-truth labels coming from the former rule-based codification engine Sicore, and other from manual annotation (when Sicore could not perform the codification). When evaluated on SIRENE 3 data, the model naturally exhibits a very high accuracy of 89% (along with other high performance metrics). However, SIRENE 4 data significantly differs from SIRENE 3 data (text activity descriptions are for instance longer on average), as the registration channel has been refactored in the new system. This distribution shift in the data comes with a reduced accuracy of 80% on a small evaluation set originating from the new registration channel, which has been completely hand-coded. It is important to note that this first SIRENE 4 evaluation set is biased as only certain types of companies registered through the new channel at first.
 
@@ -102,13 +107,12 @@ The relevant computations are done with direct SQL queries on the Parquet files 
 
 The monitoring dashboard offers insight about the codification on several levels:
 
-- The daily and weekly number of queries made to the API are displayed in two separate graphs;
-- The daily and weekly automatic codification rates are also displayed, in reactive visualizations which are modified according to the confidence threshold for automatic codification displayed by the user. The aggregate automatic codification rate on all data is also displayed;
-- The distribution of confidence intervals is displayed for a time window specified by the user;
-- 
-- To detect potential data drifts, the user can specify two distinct time windows as well as a level of the activity classification (GIVE THIS INFORMATION SOONER BUT The classification has a hierarchical structure, meaning that the 732 codes at the finest level are grouped in 615 *classes*, themselves grouped into 272 *groups*, themselves grouped into 52 *divisions*, themselves grouped into 21 *sections*) to visualize the distributions of codes predicted at the desired level within the time windows;
-- All data fed at some point to the codification API is available in a table (text descriptions and categorical variables) along with the predictions made by the ML classification model on each data point and the associated confidence. This table can be filtered on any of its fields to allow users to look for specific data points;
-- Finally, a dashboard tab focuses on text statistics, and allows to user to mean number of words and of sentences of text descriptions fed to the API within a specified time window. The user can also visualize the most frequent identical text descriptions as well as the most frequent words within that time window. (TO COMPLETE)
+- The daily and weekly number of queries made to the API are displayed in two separate graphs on a tab. The daily and weekly automatic codification rates are also displayed, in reactive visualizations which are modified according to the confidence threshold for automatic codification displayed by the user. The aggregate automatic codification rate on all data is also displayed (see @fig-tab1);
+- The distribution of confidence intervals is displayed for a time window specified by the user (@fig-tab4);
+- For a time window, a level of the NAF classification system and a confidence threshold specified by the user, the number of predictions in each possible class in displayed in a barplot, colored with the corresponding automatic codification rates for these classes (@fig-tab5);
+- To detect potential data drifts, the user can specify two distinct time windows as well as a level of the activity classification to visualize the distributions of codes predicted at a desired level within the time windows (@fig-tab6);
+- All data fed at some point to the codification API is available in a table (text descriptions and categorical variables) along with the predictions made by the ML classification model on each data point and the associated confidence. This table can be filtered on any of its fields to allow users to look for specific data points (@fig-tab7);
+- Finally, a dashboard tab focuses on text statistics, and allows to user to mean number of words and of sentences of text descriptions fed to the API within a specified time window. The user can also visualize the most frequent identical text descriptions as well as the most frequent words within that time window (@fig-tab8).
 
 While these tabs give insight on the data distribution and on the predictions of the classification model on that data, a proper continuous evaluation of the performance of the coding engine is not available at this point. An evaluation dataset with enough data collected in a continous fashion is necessary for this.
 
@@ -116,16 +120,65 @@ While these tabs give insight on the data distribution and on the predictions of
 
 To perform a continuous performance evaluation of the ML model, we regularly annotate data points sampled from the SIRENE 4 information system. We sample batches of data with are manually annotated using a Label Studio interface. The first batch was sampled to get unique data points in the subset covering the period going from January 2022 to February 2023, with inclusion probabilities proportional to their prevalence in this subset. In the following batches, we only sample data points from a subset covering the latest dates not yet present in the evaluation set.
 
-Data batches are uploaded on a Label Studio interface, to which several annotators have access. A single annotation is demanded for each point in the batch: the annotator is presented with the text description of the activity and the additional categorical variables useful for the classification task. Either a code from the NAF classification system is chosen or the text description is marked *uncodable*. The annotator also has the possibility to skip the annotation task, which will leave it available for an other annotator. A single annotation takes on average about xxx. For now, xxx batches of xxx, xxx and xxx descriptions have been added to our evaluation set this way.
+Data batches are uploaded on a Label Studio interface, to which several annotators have access. A single annotation is demanded for each point in the batch: the annotator is presented with the text description of the activity and the additional categorical variables useful for the classification task. Either a code from the NAF classification system is chosen or the text description is marked *uncodable*. The annotator also has the possibility to skip the annotation task, which will leave it available for an other annotator. @fig-ls shows the Label Studio user interface, which includes a tool to browse the classification system efficiently with keywords. With the current system, a single annotation takes on average about xxx. For now, 5 batches have been added to our evaluation set for a total number of around 8400 data points.
+
+![Screenshot of the Label Studio UI for a single annotation task.](img/labelstudio.png){#fig-ls}
 
 An issue with the annotation procedure for now is that one single code is collected for each text description, regardless of how simple it is to assign it a code. We would eventually like to modify the procedure by allowing annotators to assign a code but warn that the description is difficult to classify. Such descriptions would then be annotated by a different person not aware of the first code that was assigned (with the intervention of an arbiter in the case of a disagreement).
+
+Two tabs are added to the monitoring dashboard for continuous performance evaluation:
+
+- A first tab gives elements on the entire evaluation set, given a specified threshold on the confidence for automatic codification (@fig-tab2):
+  - The total number of observations in the evaluation set;
+  - The automatic coding rate;
+  - The accuracy on automatically-coded descriptions;
+  - The top-2 to top-5 accuracies on automatically-coded descriptions;
+  - The accuracies on automatically-coded descriptions at all levels of the NAF classification system;
+  - The distributions of confidence values on the entire evaluation set for both correctly and incorrectly classified descriptions, with a display of the chosen threshold;
+- A second tab gives monthly estimates for the accuracy of the codification engine, with bootstrap confidence intervals (@fig-tab3).
 
 # Retraining {#sec-retraining}
 
 ## Triggers
 
+"When" is one of the first questions arising when thinking about retraining the ML model behind the codification engine. As explained earlier, business activities evolve over time, so the codification engine should not be static. At a given time, the model in use should be trained with data which covers as much as possible the entire distribution of inference data. This means that if a new business appears at some point $t$ in time, the ML model used for codification should be retrained or fine-tuned with training data including data points corresponding to this new business. In theory, this will be the case for an extraction of the registry following $t$. Indeed, the data points in question should be given a low confidence score, and thus be manually assigned the correct code.  
+
+It seems natural to advocate frequent retraining or fine-tuning procedures to avoid long periods of time where the data points mentioned above are all coded manually. However, it is good practice to have a thorough validation procedure when switching production models. This validation can be costly, which on the contrary encourages to re-train sparingly over time. This is all the more true that we are not dealing with extremely high-frequency data and that the emergence of new businesses is a relatively one-off phenomenon. All in all, it seems reasonable considering our validation procedure to periodically retrain our classification model every 3-6 months.
+
+In addition to this periodic update, our monitoring allows us to trigger specific retraining procedures when certain events are observed -- for instance, as soon as the monthly accuracy computed on our evaluation set (see @fig-tab8) falls under a certain threshold.
+
 ## Retraining strategies
+
+
+Réclamations
+
+Another situation mentioned earlier which can happen in the context of our codification use-case is important to describe in more detail: businesses traditionally associated with a certain activity may see this activity evolve. From a certain point on, the code which should be assigned to such a business changes from a code A to another code B. Regarding data points corresponding to this business that were coded manually, then directions given by manual annotators were hopefully modified accordingly. This means that in the registry data, data points corresponding to the same business will partly be labeled as A up to some point and as B later on. We would therefore like to retrain or fine-tune the ML model with data including the latest B labels as much as possible. If this is not  
+
+
+- Retraining from scratch, going back to a certain depth ?
+- Retraining only with a small lr from pretrained weights, with only more recent data points to adjust ?
+
 
 # Discussion
 
+- BERT vs. fastText: comparison analysis
+
 # References
+
+# Supplementary material
+
+![Dashboard tab offering daily and weekly insight on the number of queries to the API and its automatic codification rate.](img/tab1.png){#fig-tab1}
+
+![Dashboard tab displaying the distribution of confidence values for a specified time window.](img/tab4.png){#fig-tab4}
+
+![Dashboard tab displaying numbers of queries and automatic codification rates for classes at a specified level of the classification system and for a specified time window.](img/tab5.png){#fig-tab5}
+
+![Dashboard tab displaying the two distributions of predicted classes at a specified level of the classification system for two specified time windows.](img/tab6.png){#fig-tab6}
+
+![Dashboard tab allowing users to look through the data sent to the codification engine within a specified time window.](img/tab7.png){#fig-tab7}
+
+![Dashboard tab allowing insight on the most frequent text descriptions, most frequent words and on the average length of the descriptions within a specified time window.](img/tab8.png){#fig-tab8}
+
+![Dashboard tab giving insight on the aggregate performance of the codification engine on the evaluation set.](img/tab2.png){#fig-tab2}
+
+![Dashboard tab giving insight on the monthly accuracy of the codification set.](img/tab3.png){#fig-tab3}
