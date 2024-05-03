@@ -83,17 +83,42 @@ Additional categorical variables are in fact used to classify the text descripti
 
 ## Model serving {#sec-serving}
 
-Providing the trained model as an artifact is not a convenient way to make it available to end-users, as it assumes that they have the required knowledge to use the artifact to get predictions correctly, which often requires specific computation environment, etc. Serving a model this way always leads to code duplication and very often to errors. In an effort to build an interoperable and easy-to-use codification engine, available for query from various programming languages, our text classification model is served through a REST API. REST APIs have become a standard way to serve ML models. Among theirs advantages, they rely on standards technologies for queries (HTTP requests) and responses (generally, JSON-formatted strings), making them agnostic to the programming language used to query them, and they offer great scalability because of their stateless design.
+Providing the trained model as an artifact is not a convenient way to make it available to end-users, as it assumes that they have the required knowledge to use the artifact to get predictions correctly, which often requires a specific computation environment, etc. Serving a model this way always leads to code duplication and very often to errors. In an effort to build an interoperable and easy-to-use codification engine, available for query from various programming languages, our text classification model is served through a REST API. REST APIs have become a standard way to serve ML models. Among their advantages, they rely on standards technologies for queries (HTTP requests) and responses (generally, JSON-formatted strings), making them agnostic to the programming language used to query them, and they offer great scalability because of their stateless design.
 
-The REST API is developed using FastAPI, a modern, high-performance, web framework for building APIs with Python. We encapsulate the API code and its dependencies into a Docker image, which is deployed as a container on the Kubernetes cluster. This grants the ability to easily scale the API according to demand thanks to automatic load-balancing. Uponstartup, the API automatically retrieves the text classification model from storage. The model is packaged as an MLflow model, which integrates pre-processing steps in its inference method. This means that clients do not have to apply these steps themselves, which prevents many potential mistakes.  
+The REST API is developed using FastAPI, a modern, high-performance, web framework for building APIs with Python. We encapsulate the API code and its dependencies into a Docker image, which is deployed as a container on a Kubernetes cluster. This grants the ability to easily scale the API according to demand thanks to automatic load-balancing. Upon startup, the API automatically retrieves the text classification model from storage. The model is packaged as an MLflow model, which integrates pre-processing steps in its inference method. This means that clients do not have to apply these steps themselves. This prevents many potential mistakes.  
 
 # Monitoring {#sec-monitoring}
 
 ## Design
 
+As explained in @sec-context, the activity of the codification engine is monitored in almost real-time. This monitoring is essential to detect anomalies in the inference data, or to be able to make decision on when to retrain the ML model behind the engine. The monitoring system is made up of two distinct blocks:
+
+- A simple *Extract-Transform-Load* (ETL) process is run nightly from a Python script to fetch the logs recording the activity of the codification API. The logs are parsed and their content is saved as partitioned Parquet files;
+- An interactive dashboard is built to offer insight on the data fed to the API and how it is coded.
+
+The relevant computations are done with direct SQL queries on the Parquet files storing logs content using the DuckDB engine. The dashboard is also rebuilt nightly to integrate the latest data in its static visualizations. It is deployed as a container on a Kubernetes cluster.
+
 ## Engine monitoring
 
+The monitoring dashboard offers insight about the codification on several levels:
+
+- The daily and weekly number of queries made to the API are displayed in two separate graphs;
+- The daily and weekly automatic codification rates are also displayed, in reactive visualizations which are modified according to the confidence threshold for automatic codification displayed by the user. The aggregate automatic codification rate on all data is also displayed;
+- The distribution of confidence intervals is displayed for a time window specified by the user;
+- 
+- To detect potential data drifts, the user can specify two distinct time windows as well as a level of the activity classification (GIVE THIS INFORMATION SOONER BUT The classification has a hierarchical structure, meaning that the 732 codes at the finest level are grouped in 615 *classes*, themselves grouped into 272 *groups*, themselves grouped into 52 *divisions*, themselves grouped into 21 *sections*) to visualize the distributions of codes predicted at the desired level within the time windows;
+- All data fed at some point to the codification API is available in a table (text descriptions and categorical variables) along with the predictions made by the ML classification model on each data point and the associated confidence. This table can be filtered on any of its fields to allow users to look for specific data points;
+- Finally, a dashboard tab focuses on text statistics, and allows to user to mean number of words and of sentences of text descriptions fed to the API within a specified time window. The user can also visualize the most frequent identical text descriptions as well as the most frequent words within that time window. (TO COMPLETE)
+
+While these tabs give insight on the data distribution and on the predictions of the classification model on that data, a proper continuous evaluation of the performance of the coding engine is not available at this point. An evaluation dataset with enough data collected in a continous fashion is necessary for this.
+
 ## Continuous performance evaluation
+
+To perform a continuous performance evaluation of the ML model, we regularly annotate data points sampled from the SIRENE 4 information system. We sample batches of data with are manually annotated using a Label Studio interface. The first batch was sampled to get unique data points in the subset covering the period going from January 2022 to February 2023, with inclusion probabilities proportional to their prevalence in this subset. In the following batches, we only sample data points from a subset covering the latest dates not yet present in the evaluation set.
+
+Data batches are uploaded on a Label Studio interface, to which several annotators have access. A single annotation is demanded for each point in the batch: the annotator is presented with the text description of the activity and the additional categorical variables useful for the classification task. Either a code from the NAF classification system is chosen or the text description is marked *uncodable*. The annotator also has the possibility to skip the annotation task, which will leave it available for an other annotator. A single annotation takes on average about xxx. For now, xxx batches of xxx, xxx and xxx descriptions have been added to our evaluation set this way.
+
+An issue with the annotation procedure for now is that one single code is collected for each text description, regardless of how simple it is to assign it a code. We would eventually like to modify the procedure by allowing annotators to assign a code but warn that the description is difficult to classify. Such descriptions would then be annotated by a different person not aware of the first code that was assigned (with the intervention of an arbiter in the case of a disagreement).
 
 # Retraining {#sec-retraining}
 
