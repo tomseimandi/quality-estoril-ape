@@ -174,25 +174,37 @@ A similar situation occurs when businesses traditionally associated with a certa
 
 ## Retraining strategies
 
-There are multiple ways to conduct the retraining procedure. We will consider the two following alternatives here:
+There are multiple ways to conduct the retraining procedure. There are two following alternatives:
 
 - Training a model from scratch, with an updated training set. The main question in this scenario is how to weight observations from the training set with respect to their date. In particular, should we stop including observations that are too old by setting a limit on the earliest date in the training set? This question should be  dealt with empirically using evaluation data. Indeed, it is very dependant on the use-case and the answer is not obvious as two effects counterbalance each other:
   - First, model capabilities scale with training data. In general, including additional data points in the training set leads to a better accuracy;
   - Old data from the registry has lower quality labels. This results from the evolution of business activities mentioned earlier. Let us consider businesses for which the activity code changed at some point. In the registry data, data points corresponding to the same business will partly be labeled as A up to some point and as B later on. Ideally, we would therefore like to retrain the ML model with data including only the latest B labels;
 - Fine-tuning the current model with only new observations from the registry. In this scenario, we use pre-trained weights from the current model used in production which we adjust with the latest information from the registry. A key concern in this scenario is that the global performance of the simple classification model we are using is very sensitive to distribution shifts in inference data with respect to training data, which can easily happen in the case of a small training set. In any case, fine-tuning must be done to maximize performance metrics on a validation set.
 
+Only the first alternative is tested here, as using the fastText library prevents from easily fine-tuning using pretrained weights[^4]. @fig-accuracy-training-size displays the accuracy on the Label Studio evaluation set and the training set size as functions of the earliest year included in training data.
+
+![Accuracy on the Label Studio evaluation set and training set size as functions of the earliest year included in training data](img/acc_training_size.png){#fig-accuracy-training-size}
+
+[^4]: A possibility for fine-tuning would be to use this alternative Pytorch implementation for example: [https://github.com/InseeFrLab/codif-ape-train/tree/main/src/pytorch_classifier](https://github.com/InseeFrLab/codif-ape-train/tree/main/src/pytorch_classifier). 
+
 # Discussion
+
+By monitoring the activity of our coding engine and its performance over time, we are able to minimize the risk of degradation by developing appropriate retraining  strategies. Another area for improving the current system is to use a more complex language model.
 
 As explained in @sec-modeling, the classification model used by the current coding engine is a very simple bag-of-ngrams model. It offers the advantages of simplicity, speed and good handling of spelling mistakes, which are an important feature of SIRENE data to account for. It does come with obvious drawbacks however. Embeddings in our classification model are contextual only in a very limited way, through the use of word-ngrams. Activity descriptions similar to "Our company's main activity is <activity 1> but we are also involved in <activity 2>" will never be correctly embedded for the classification task at hand as the model will have no way of differentiating the two described activities. 
 
 However, the accuracy gains observed with a more complex model, a version of CamemBERT[^4] fine-tuned on SIRENE data for our text classification task, are currently too low to completely justify switching models. When evaluated on part of our evaluation set, a fastText and a CamemBERT model trained on SIRENE 4 data and SIRENE 3 data going back to January 2020 have respective accuracies of 0.75 and 0.76. More precisely:
 
-- The two models predict the code given by the annotator with a rate of 0.71;
-- The fastText model predict the code given by the annotator which is different from the code predicted by the CamemBERT model with a rate of 0.04;
-- The CamemBERT model predict the code given by the annotator which is different from the code predicted by the fastText model with a rate of 0.05;
-- The two models predict the same code but it is different from the annotation with a rate of 0.17.
+- The two models predict the code given by the annotator with a rate of 0.71 (case A);
+- The fastText model predict the code given by the annotator which is different from the code predicted by the CamemBERT model with a rate of 0.04 (case B);
+- The CamemBERT model predict the code given by the annotator which is different from the code predicted by the fastText model with a rate of 0.05 (case C);
+- The two models predict the same code but it is different from the annotation with a rate of 0.17 (case D).
 
-[^4]: CamemBERT is a language model for French based on the RoBERTa architecture pretrained on the French subcorpus of the multilingual corpus OSCAR [@martin-etal-2020-camembert].
+Looking at the predictions more closely shows that when the two models predict the same code which differs from the annotation, it is often not clear that the annotation is correct. This pushes towards a more thorough annotation procedure with double coding and intervention of an arbiter in the case of a disagreement, either systematically or on a selection of observations identified as difficult to code. As mentioned earlier, it is possible to allow annotators to mark observations as difficult to code on the Label Studio interface. Another possibility to select these observations is to check whether the manual annotation matches the prediction(s) of one or more models. While this could help reduce the annotation cost, it could potentially introduce bias in the evaluation set.
+
+An in-depth analysis of cases B and C would be interesting to get insight into the limitations of the bag-of-ngrams model or on the text descriptions currently not correctly dealt with by the more complex CamemBERT model. For instance, a first simple observation is that text descriptions corresponding to case B are on average slightly shorter than those corresponding to case C (84 versus 76 characters). This is consistent with the idea that CamemBERT models language better and should therefore have a higher classification accuracy on longer, more complex descriptions. The in-depth analysis could help guide improvements of the training procedure for the CamemBERT model (including tokenizer adjustments, etc.), which we leave for future work. 
+
+[^5]: CamemBERT is a language model for French based on the RoBERTa architecture pretrained on the French subcorpus of the multilingual corpus OSCAR [@martin-etal-2020-camembert].
 
 {{< pagebreak >}}
 
