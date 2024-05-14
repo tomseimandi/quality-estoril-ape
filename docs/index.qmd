@@ -149,12 +149,12 @@ An issue with the annotation procedure for now is that one single code is collec
 
 Two tabs are added to the monitoring dashboard for continuous performance evaluation:
 
-- A first tab gives elements on the entire evaluation set, given a specified threshold on the confidence for automatic codification (@fig-tab2):
+- A first tab gives elements on the entire evaluation set, given a specified threshold on the confidence for automatic codification. Plots here assume manually-coded descriptions are perfectly coded (@fig-tab2):
   - The total number of observations in the evaluation set;
   - The automatic coding rate;
-  - The accuracy on automatically-coded descriptions;
-  - The top-2 to top-5 accuracies on automatically-coded descriptions;
-  - The accuracies on automatically-coded descriptions at all levels of the NAF classification system;
+  - The accuracy of the coding engine;
+  - The top-2 to top-5 accuracies of the coding engine;
+  - The accuracies of the coding engine at all levels of the NAF classification system;
   - The distributions of confidence values on the entire evaluation set for both correctly and incorrectly classified descriptions, with a display of the chosen threshold;
 - A second tab gives monthly estimates for the accuracy of the coding engine, with bootstrap confidence intervals (@fig-tab3).
 
@@ -183,7 +183,7 @@ There are multiple ways to conduct the retraining procedure. There are two follo
   - Old data from the registry has lower quality labels. This results from the evolution of business activities mentioned earlier. Let us consider businesses for which the activity code changed at some point. In the registry data, data points corresponding to the same business will partly be labeled as A up to some point and as B later on. Ideally, we would therefore like to retrain the ML model with data including only the latest B labels;
 - Fine-tuning the current model with only new observations from the registry. In this scenario, we use pre-trained weights from the current model used in production which we adjust with the latest information from the registry. A key concern in this scenario is that the global performance of the simple classification model we are using is very sensitive to distribution shifts in inference data with respect to training data, which can easily happen in the case of a small training set. In any case, fine-tuning must be done to maximize performance metrics on a validation set.
 
-Only the first alternative is tested here, as using the fastText library prevents from easily fine-tuning using pre-trained weights[^5]. @fig-accuracy-training-size displays the accuracies on the Label Studio evaluation set from models trained on SIRENE 4 data as well as subsets from SIRENE 3 data (as well as training set size) as functions of the earliest year included in SIRENE 3 training data. All accuracies measured range from 0.77 to 0.78. On a macroscopic level and for our use-case, there is no clear indication on how to set a date threshold for the training data. It seems reasonable to keep a few years (3-5 years for example) of data in the training set. A more in-depth analysis could help refine this policy.
+Only the first alternative is tested here, as using the fastText library prevents from easily fine-tuning using pre-trained weights[^5]. @fig-accuracy-training-size displays the accuracies on the Label Studio evaluation set of models trained on SIRENE 4 data and subsets of SIRENE 3 data as a function of the earliest year included in the SIRENE 3 training data. Training set sizes are also displayed. All accuracies measured range from 0.77 to 0.78. On a macroscopic level and for our use-case, there is no clear indication on how to set a date threshold for the training data. It seems reasonable to keep a few years (3-5 years for example) of data in the training set. A more in-depth analysis could help refine this policy.
 
 ![Accuracy on the Label Studio evaluation set and training set size as functions of the earliest year included in SIRENE 3 training data](img/acc_training_size.png){#fig-accuracy-training-size width=70%}
 
